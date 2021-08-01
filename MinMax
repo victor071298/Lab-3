@@ -1,0 +1,153 @@
+#include<stdio.h>
+#include<pthread.h>
+#include<stdlib.h>
+#include<time.h>
+
+long long int n;  //Dimensão do vetor a ser criado
+int nthreads;   //Número de threads
+float *vetor;   //Vetor que armazena os valores a serem comparados
+typedef struct{
+    float min;
+    float max;
+} tArgs;   //Estrutura utilizada para armazenar os valores mínimos e máximos encontrados pelas threads
+
+void *minimax (void*arg){  //Função a ser executada pelas threads 
+    tArgs* args = (tArgs*) malloc(sizeof(tArgs));
+    long int id = (long int) arg;   //Identificador das threads
+    long int tamBloco = n/nthreads; //Tamanho do bloco que cada thread executará
+    long int ini = id*tamBloco;  //Início do bloco que cada thread executará
+    long int fim; //Final do bloco que cada thread executará
+    //Tratando a possibilidade de o tamanho do vetor não ser divisível pelo número de threads
+    if(id == nthreads-1){
+        fim=n;
+    }
+    else{fim=ini+tamBloco;}
+    //Inicializando os valores mínimo e máximo
+    args->min=vetor[ini];
+    args->max=vetor[ini];
+    //Encontrando o menor e o maior valor 
+    for(long int i=ini+1; i<fim; i++){
+        if(args->min>vetor[i]){
+            args->min=vetor[i];
+        }
+        else if(args->max<vetor[i]){
+            args->max=vetor[i];
+        }
+    }
+    pthread_exit((void*)args);
+}
+
+int main(int argc, char *argv[]){
+    
+    //Declarando as variáveis
+    
+    srand(time(NULL)); //Utilizado para gerar os floats aleatórios
+    double dif=0; //Variável utilizada para calcular o tempo gasto em diversas etapas diferentes
+    clock_t timeIn , timeOut;
+    pthread_t *tid;
+    float v[2]; //Vetor que armazena os valores mínimos e máximos encontrados de maneira sequencial onde v[0]=min e v[1]=máx
+    float minmax[2]; //Vetor que armazena os valores mínimos e máximos encontrados de maneira concorrente onde minmax[0]=min e minmax[1]=máx
+    tArgs *retorno; //Variável que armazenará o retorno das threads
+
+    //Corrigindo possíveis erros colocados na entrada
+    
+    if(argc<3){
+        fprintf(stderr,"A entrada deve ser: ./lab3 <dimensao do vetor> <n de threads>\n");
+        return 1;
+    }
+    
+    //Armazenando os valores dados como entrada
+    
+    n=atoll(argv[1]);          
+    nthreads=atoi(argv[2]);
+    
+    //Alocando memória
+    
+    vetor = (float*) malloc(sizeof(float)*n);
+    if(vetor==NULL){
+        fprintf(stderr,"Erro--malloc\n");
+        return 2;
+    }
+    retorno = (tArgs*) malloc(sizeof(tArgs));
+    
+    //Preenchendo o vetor com floats aleatórios
+    
+    for(long int i=0; i<n; i++){
+        vetor[i]=(rand()%100*rand()/rand()*((100)+0.1));   
+    }
+
+    //Encontrando os valores mínimo e máximo de maneira sequencial
+    
+    timeIn=clock();
+    for(long int i=0; i<n; i++){
+        if(i==0){
+            v[0]=vetor[i];
+            v[1]=vetor[i];
+        }
+        else if(v[0]>vetor[i]){
+            v[0]=vetor[i];
+        }
+        else if(v[1]<vetor[i]){
+            v[1]=vetor[i];
+        }
+    }
+    timeOut=clock();
+    dif=(double)(timeOut-timeIn)/CLOCKS_PER_SEC;
+    printf("O tempo em s levado para soma sequencial foi %.10lf\n",dif);
+    
+    //Soma concorrente dos elementos
+    
+    //Alocando memória referente as threads
+    
+    timeIn=clock();
+    tid = (pthread_t*)malloc(sizeof(pthread_t) * nthreads);
+    if(tid==NULL){
+        fprintf(stderr,"Erro-malloc\n");
+        return 2;
+    }
+    
+    //Criando as threads
+    
+    for(long int i = 0; i < nthreads; i++){
+        if(pthread_create(tid+i, NULL, minimax,(void*) i)){
+            fprintf(stderr,"Erro--pthread_create\n");
+            return 3;
+        }
+    }
+    
+    //Aguardando término das threads e encontrando os valores mínimo e máximo dentre os resultados de cada thread
+    
+    for(long int i=0;i<nthreads;i++){
+        pthread_join(*(tid+i),(void**)&retorno);
+        if(i==0){
+            minmax[0]= retorno->min;
+            minmax[1]= retorno->max;
+        }
+        else{
+            if(minmax[0]>retorno->min){
+                minmax[0]=retorno->min;
+            }
+            if(minmax[1]<retorno->max){
+                minmax[1]=retorno->max;
+            }
+        }
+        free(retorno);
+    }
+
+    timeOut=clock();
+    dif=(double)(timeOut-timeIn)/CLOCKS_PER_SEC;
+    printf("O tempo em s levado para soma concorrente foi %.10lf\n",dif);
+
+    //Checando a corretude do programa comparando a versão sequencial e concorrente
+    
+    if(v[0]==minmax[0]&&v[1]==minmax[1]){
+        puts("Vetor sequencial e concorrente iguais");
+    }
+    else{
+        puts("Valores diferentes encontrados");
+    }
+    //Liberando o espaço de memória
+    free(vetor);
+    free(tid);
+    return 0;
+}
