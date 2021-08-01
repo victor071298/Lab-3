@@ -11,7 +11,7 @@ n = 10^7:
 2 threads: 2
 4 threads: 3.06122
 
-n = 10^^8
+n = 10^8
 2 threads: 2.00902
 4 threads: 3.65962
 
