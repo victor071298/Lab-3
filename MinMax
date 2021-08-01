@@ -60,6 +60,11 @@ int main(int argc, char *argv[]){
     
     n=atoll(argv[1]);          
     nthreads=atoi(argv[2]);
+
+    //Corrigindo número de threads maior do que tamanho do vetor
+    if(nthreads>n){
+        nthreads=n;
+    }
     
     //Alocando memória
     
@@ -73,7 +78,8 @@ int main(int argc, char *argv[]){
     //Preenchendo o vetor com floats aleatórios
     
     for(long int i=0; i<n; i++){
-        vetor[i]=(rand()%100*rand()/rand()*((100)+0.1));   
+        vetor[i]=(rand()%100*((100)+0.1));   
+        printf("vetor:%f\n",vetor[i]);
     }
 
     //Encontrando os valores mínimo e máximo de maneira sequencial
@@ -146,6 +152,7 @@ int main(int argc, char *argv[]){
     else{
         puts("Valores diferentes encontrados");
     }
+    
     //Liberando o espaço de memória
     free(vetor);
     free(tid);
